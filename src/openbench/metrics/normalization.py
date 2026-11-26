@@ -39,15 +39,17 @@ class NormalizationConfig:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize configuration to a plain dictionary."""
-        return {
+        data: dict[str, Any] ={
             "strip_whitespace": self.strip_whitespace,
             "case_sensitive": self.case_sensitive,
             "collapse_whitespace": self.collapse_whitespace,
             "strip_punctuation": self.strip_punctuation,
-            "unicode_normalization": self.unicode_normalization,
-            "strip_unicode_punctuation": self.strip_unicode_punctuation,
         }
-
+        if self.unicode_normalization is not None:
+            data["unicode_normalization"] = self.unicode_normalization
+        if self.strip_unicode_punctuation:
+            data["strip_unicode_punctuation"] = self.strip_unicode_punctuation
+        return data
 
 def normalize_text(text: str, config: NormalizationConfig | None = None) -> str:
     """Normalize a string according to the provided NormalizationConfig."""
