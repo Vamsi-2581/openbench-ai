@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
+from openbench.cli import main
 from openbench.dataset import DatasetRecord
 from openbench.exceptions import MetricError
 from openbench.metrics import (
@@ -26,12 +30,15 @@ def _make_record(
     expected: str = "180",
     keywords: list[str] | None = None,
     disallow_substring: bool = False,
+    answer_pattern: str | None = None,
 ) -> DatasetRecord:
     meta: dict = {"difficulty": "easy"}
     if keywords is not None:
         meta["keywords"] = keywords
     if disallow_substring:
         meta["disallow_substring"] = True
+    if answer_pattern is not None:
+        meta["answer_pattern"] = answer_pattern
     return DatasetRecord(
         id="test_001",
         category="reasoning",
@@ -172,7 +179,7 @@ def test_custom_metric_registration_and_lookup() -> None:
     assert inst.compute_item(rec, "42").passed is True
 
     with pytest.raises(MetricError, match="Unknown metric"):
-        create_metric("non_existent_metric_xyz"
+        create_metric("non_existent_metric_xyz")
 
 
 def test_regex_match_search_default() -> None:
@@ -180,7 +187,9 @@ def test_regex_match_search_default() -> None:
     record = _make_record("42", answer_pattern=r"\b42\b")
     assert metric.compute_item(record, "The answer is 42.").score == 1.0
     assert metric.compute_item(record, "The answer is 43.").score == 0.0
-
+    record_upper = _make_record("ABC-123", answer_pattern=r"[A-Z]{3}-\d+")
+    assert metric.compute_item(record_upper, "Ticket ABC-123 resolved").score == 1.0
+    assert metric.compute_item(record_upper, "ticket abc-123 resolved").score == 0.0
 
 def test_regex_match_fullmatch() -> None:
     metric = RegexMatchMetric(fullmatch=True)
@@ -208,4 +217,34 @@ def test_regex_match_registry_lookup() -> None:
     assert "regex_match" in METRIC_REGISTRY
     assert "regex_match" in list_registered_metrics()
     assert isinstance(create_metric("regex_match"), RegexMatchMetric)
-    )
+    
+def test_regex_match_cli_list_and_evaluate(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["metrics", "list"]) == 0
+    assert "regex_match" in capsys.readouterr().out
+    dataset_path = tmp_path / "dataset.jsonl"
+    items = [
+    {
+    "id": "i1", "category": "reasoning", "prompt": "Ticket?",
+    "expected_answer": "ABC-123", "metadata": {"answer_pattern": r"[A-Z]{3}-\d+"},
+    },
+    {
+    "id": "i2", "category": "reasoning", "prompt": "Capital?",
+    "expected_answer": "Paris", "metadata": {},
+    },
+    ]
+dataset_path.write_text("\n".join(json.dumps(x) for x in items) + "\n", encoding="utf-8")
+responses_path = tmp_path / "responses.json"
+responses_payload = {"model_name": "TestModel", "model_version": "1.0", "responses": [
+    {"id": "i1", "response": "Ticket ABC-123 resolved"},
+    {"id": "i2", "response": "Paris"},
+    ]}
+responses_path.write_text(json.dumps(responses_payload), encoding="utf-8")
+out_dir = tmp_path / "out"
+rc = main([
+    "evaluate", "--dataset", str(dataset_path), "--responses", str(responses_path),
+    "--metrics", "regex_match", "--output", str(out_dir),
+    ])
+assert rc == 0
+report_files = list(out_dir.glob("*.json"))
+assert report_files
+assert any("regex_match" in p.read_text(encoding="utf-8") for p in report_files)
