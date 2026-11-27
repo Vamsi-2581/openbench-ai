@@ -39,9 +39,9 @@ class RegexMatchMetric(BaseMetric):
     def compute_item(self, record: DatasetRecord, response_text: str) -> MetricResult:
         metadata = record.metadata or {}
         pattern = metadata.get("answer_pattern")
-        norm_response = normalize_text(response_text, self.normalization)
 
         if not pattern:
+            norm_response = normalize_text(response_text, self.normalization)
             norm_expected = normalize_text(record.expected_answer, self.normalization)
             matched = norm_expected == norm_response
             return MetricResult(
@@ -58,9 +58,9 @@ class RegexMatchMetric(BaseMetric):
 
         compiled = self._compile_pattern(str(pattern), record.id)
         match_obj = (
-            compiled.fullmatch(norm_response)
+            compiled.fullmatch(response_text)
             if self.fullmatch
-            else compiled.search(norm_response)
+            else compiled.search(response_text)
         )
         matched = match_obj is not None
         return MetricResult(
@@ -71,7 +71,6 @@ class RegexMatchMetric(BaseMetric):
                 "pattern": str(pattern),
                 "fullmatch": self.fullmatch,
                 "matched_text": match_obj.group(0) if match_obj is not None else None,
-                "normalized_response": norm_response,
             },
         )
 
