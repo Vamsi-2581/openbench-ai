@@ -108,6 +108,7 @@ def test_normalization_invalid_unicode_normalization_raises() -> None:
     with pytest.raises(ValueError):
         NormalizationConfig(unicode_normalization="NFD")
 
+
 def test_normalization_profile_loader_unicode_options() -> None:
     """ProfileLoader accepts valid Unicode normalization options and rejects NFD."""
     profile = ProfileLoader.validate_dict(
@@ -126,7 +127,8 @@ def test_normalization_profile_loader_unicode_options() -> None:
             "name": "test-prof",
             "normalization": {"unicode_normalization": "NFD"},
             })
-        
+
+
 def test_exact_match_metric_passes_and_fails_accurately() -> None:
     """ExactMatchMetric scores 1.0 on normalized exact match and 0.0 on extra framing."""
     record = _make_record(expected="180")
