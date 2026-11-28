@@ -39,7 +39,7 @@ class NormalizationConfig:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize configuration to a plain dictionary."""
-        data: dict[str, Any] ={
+        data: dict[str, Any] = {
             "strip_whitespace": self.strip_whitespace,
             "case_sensitive": self.case_sensitive,
             "collapse_whitespace": self.collapse_whitespace,
