@@ -191,6 +191,7 @@ def test_regex_match_search_default() -> None:
     assert metric.compute_item(record_upper, "Ticket ABC-123 resolved").score == 1.0
     assert metric.compute_item(record_upper, "ticket abc-123 resolved").score == 0.0
 
+
 def test_regex_match_fullmatch() -> None:
     metric = RegexMatchMetric(fullmatch=True)
     record = _make_record("42", answer_pattern=r"\d+")
@@ -217,34 +218,35 @@ def test_regex_match_registry_lookup() -> None:
     assert "regex_match" in METRIC_REGISTRY
     assert "regex_match" in list_registered_metrics()
     assert isinstance(create_metric("regex_match"), RegexMatchMetric)
-    
+
+
 def test_regex_match_cli_list_and_evaluate(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["metrics", "list"]) == 0
     assert "regex_match" in capsys.readouterr().out
     dataset_path = tmp_path / "dataset.jsonl"
     items = [
-    {
-    "id": "i1", "category": "reasoning", "prompt": "Ticket?",
-    "expected_answer": "ABC-123", "metadata": {"answer_pattern": r"[A-Z]{3}-\d+"},
-    },
-    {
-    "id": "i2", "category": "reasoning", "prompt": "Capital?",
-    "expected_answer": "Paris", "metadata": {},
-    },
+        {
+            "id": "i1", "category": "reasoning", "prompt": "Ticket?",
+            "expected_answer": "ABC-123", "metadata": {"answer_pattern": r"[A-Z]{3}-\d+"},
+        },
+        {
+            "id": "i2", "category": "reasoning", "prompt": "Capital?",
+            "expected_answer": "Paris", "metadata": {},
+        },
     ]
-dataset_path.write_text("\n".join(json.dumps(x) for x in items) + "\n", encoding="utf-8")
-responses_path = tmp_path / "responses.json"
-responses_payload = {"model_name": "TestModel", "model_version": "1.0", "responses": [
-    {"id": "i1", "response": "Ticket ABC-123 resolved"},
-    {"id": "i2", "response": "Paris"},
-    ]}
-responses_path.write_text(json.dumps(responses_payload), encoding="utf-8")
-out_dir = tmp_path / "out"
-rc = main([
-    "evaluate", "--dataset", str(dataset_path), "--responses", str(responses_path),
-    "--metrics", "regex_match", "--output", str(out_dir),
-    ])
-assert rc == 0
-report_files = list(out_dir.glob("*.json"))
-assert report_files
-assert any("regex_match" in p.read_text(encoding="utf-8") for p in report_files)
+    dataset_path.write_text("\n".join(json.dumps(x) for x in items) + "\n", encoding="utf-8")
+    responses_path = tmp_path / "responses.json"
+    responses_payload = {"model_name": "TestModel", "model_version": "1.0", "responses": [
+        {"id": "i1", "response": "Ticket ABC-123 resolved"},
+        {"id": "i2", "response": "Paris"},
+        ]}
+    responses_path.write_text(json.dumps(responses_payload), encoding="utf-8")
+    out_dir = tmp_path / "out"
+    rc = main([
+        "evaluate", "--dataset", str(dataset_path), "--responses", str(responses_path),
+        "--metrics", "regex_match", "--output", str(out_dir),
+        ])
+    assert rc == 0
+    report_files = list(out_dir.glob("*.json"))
+    assert report_files
+    assert any("regex_match" in p.read_text(encoding="utf-8") for p in report_files)
